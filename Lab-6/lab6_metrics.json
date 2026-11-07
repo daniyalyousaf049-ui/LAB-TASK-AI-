@@ -1,0 +1,216 @@
+{
+  "metrics": [
+    {
+      "strategy": "0overlap",
+      "backend": "tfidf",
+      "split": "dev",
+      "hit_at_3": 0.75,
+      "mrr_at_3": 0.75,
+      "n_chunks": 28,
+      "encode_sec": 0.004372899998998037,
+      "search_sec": 0.0002567999999882886
+    },
+    {
+      "strategy": "0overlap",
+      "backend": "tfidf",
+      "split": "test",
+      "hit_at_3": 0.25,
+      "mrr_at_3": 0.25,
+      "n_chunks": 28,
+      "encode_sec": 0.004372899998998037,
+      "search_sec": 0.0002567999999882886
+    },
+    {
+      "strategy": "0overlap",
+      "backend": "embedding",
+      "split": "dev",
+      "hit_at_3": 0.75,
+      "mrr_at_3": 0.75,
+      "n_chunks": 28,
+      "encode_sec": 0.16668419999950856,
+      "search_sec": 0.00019150000116496813
+    },
+    {
+      "strategy": "0overlap",
+      "backend": "embedding",
+      "split": "test",
+      "hit_at_3": 0.5,
+      "mrr_at_3": 0.5,
+      "n_chunks": 28,
+      "encode_sec": 0.16668419999950856,
+      "search_sec": 0.00019150000116496813
+    },
+    {
+      "strategy": "10overlap",
+      "backend": "tfidf",
+      "split": "dev",
+      "hit_at_3": 0.75,
+      "mrr_at_3": 0.75,
+      "n_chunks": 35,
+      "encode_sec": 0.0044499000014184276,
+      "search_sec": 0.0002623999989737058
+    },
+    {
+      "strategy": "10overlap",
+      "backend": "tfidf",
+      "split": "test",
+      "hit_at_3": 0.5,
+      "mrr_at_3": 0.5,
+      "n_chunks": 35,
+      "encode_sec": 0.0044499000014184276,
+      "search_sec": 0.0002623999989737058
+    },
+    {
+      "strategy": "10overlap",
+      "backend": "embedding",
+      "split": "dev",
+      "hit_at_3": 0.75,
+      "mrr_at_3": 0.75,
+      "n_chunks": 35,
+      "encode_sec": 0.21491139999852749,
+      "search_sec": 0.00010060000022349413
+    },
+    {
+      "strategy": "10overlap",
+      "backend": "embedding",
+      "split": "test",
+      "hit_at_3": 0.75,
+      "mrr_at_3": 0.625,
+      "n_chunks": 35,
+      "encode_sec": 0.21491139999852749,
+      "search_sec": 0.00010060000022349413
+    },
+    {
+      "strategy": "sentence",
+      "backend": "tfidf",
+      "split": "dev",
+      "hit_at_3": 1.0,
+      "mrr_at_3": 1.0,
+      "n_chunks": 34,
+      "encode_sec": 0.004013600000689621,
+      "search_sec": 0.00025240000104531646
+    },
+    {
+      "strategy": "sentence",
+      "backend": "tfidf",
+      "split": "test",
+      "hit_at_3": 0.5,
+      "mrr_at_3": 0.5,
+      "n_chunks": 34,
+      "encode_sec": 0.004013600000689621,
+      "search_sec": 0.00025240000104531646
+    },
+    {
+      "strategy": "sentence",
+      "backend": "embedding",
+      "split": "dev",
+      "hit_at_3": 1.0,
+      "mrr_at_3": 1.0,
+      "n_chunks": 34,
+      "encode_sec": 0.21869400000105088,
+      "search_sec": 9.689999933470972e-05
+    },
+    {
+      "strategy": "sentence",
+      "backend": "embedding",
+      "split": "test",
+      "hit_at_3": 1.0,
+      "mrr_at_3": 0.875,
+      "n_chunks": 34,
+      "encode_sec": 0.21869400000105088,
+      "search_sec": 9.689999933470972e-05
+    }
+  ],
+  "selected": {
+    "strategy": "sentence",
+    "backend": "embedding",
+    "split": "dev",
+    "hit_at_3": 1.0,
+    "mrr_at_3": 1.0,
+    "n_chunks": 34,
+    "encode_sec": 0.21869400000105088,
+    "search_sec": 9.689999933470972e-05
+  },
+  "failures": [
+    {
+      "strategy": "0overlap",
+      "backend": "tfidf",
+      "query": "What is the late penalty and when is late work refused?",
+      "expected_doc": "late",
+      "rank": 1,
+      "retrieved_id": "late:0",
+      "retrieved_doc": "late",
+      "retrieved_text": "University late submission policy applies to all undergraduate coursework in taught modules. Late work receives a 10 percent penalty for each calendar day late, up to three days, and is refused after that unless a formal extension was approved in"
+    },
+    {
+      "strategy": "0overlap",
+      "backend": "tfidf",
+      "query": "What proof is needed when I was ill and need more time?",
+      "expected_doc": "late",
+      "rank": 1,
+      "retrieved_id": "late:0",
+      "retrieved_doc": "late",
+      "retrieved_text": "University late submission policy applies to all undergraduate coursework in taught modules. Late work receives a 10 percent penalty for each calendar day late, up to three days, and is refused after that unless a formal extension was approved in"
+    },
+    {
+      "strategy": "0overlap",
+      "backend": "tfidf",
+      "query": "What are the rules for a new password?",
+      "expected_doc": "password",
+      "rank": 1,
+      "retrieved_id": "password:0",
+      "retrieved_doc": "password",
+      "retrieved_text": "Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login page and select Forgot Password, then enter your student email and complete an identity check with your student ID and date of birth."
+    },
+    {
+      "strategy": "0overlap",
+      "backend": "tfidf",
+      "query": "What should I do for blank printer pages?",
+      "expected_doc": "printer",
+      "rank": 1,
+      "retrieved_id": "printer:2",
+      "retrieved_doc": "printer",
+      "retrieved_text": "than twenty-four hours in the print queue are deleted automatically. Paper jams should be reported using the help button on the printer panel. Do not attempt to open the printer casing yourself. Double-sided printing is the default to save paper."
+    },
+    {
+      "strategy": "0overlap",
+      "backend": "embedding",
+      "query": "What is the late penalty and when is late work refused?",
+      "expected_doc": "late",
+      "rank": 1,
+      "retrieved_id": "late:0",
+      "retrieved_doc": "late",
+      "retrieved_text": "University late submission policy applies to all undergraduate coursework in taught modules. Late work receives a 10 percent penalty for each calendar day late, up to three days, and is refused after that unless a formal extension was approved in"
+    },
+    {
+      "strategy": "0overlap",
+      "backend": "embedding",
+      "query": "What are the rules for a new password?",
+      "expected_doc": "password",
+      "rank": 1,
+      "retrieved_id": "password:2",
+      "retrieved_doc": "password",
+      "retrieved_text": "reusing any of the last five passwords is not allowed. If you do not receive the email, check the spam folder first. Staff at the IT help desk can reset passwords in person after photo ID verification. Multi-factor authentication must"
+    },
+    {
+      "strategy": "0overlap",
+      "backend": "embedding",
+      "query": "What should I do for blank printer pages?",
+      "expected_doc": "printer",
+      "rank": 1,
+      "retrieved_id": "printer:1",
+      "retrieved_doc": "printer",
+      "retrieved_text": "on the first day of each month and unused pages do not roll over. Additional pages can be purchased through the student portal in packs of fifty. Printers are located in the library, lab buildings, and student centre. Jobs older"
+    },
+    {
+      "strategy": "10overlap",
+      "backend": "tfidf",
+      "query": "What is the late penalty and when is late work refused?",
+      "expected_doc": "late",
+      "rank": 1,
+      "retrieved_id": "late:0",
+      "retrieved_doc": "late",
+      "retrieved_text": "University late submission policy applies to all undergraduate coursework in taught modules. Late work receives a 10 percent penalty for each calendar day late, up to three days, and is refused after that unless a formal extension was approved in"
+    }
+  ]
+}

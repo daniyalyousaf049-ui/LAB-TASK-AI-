@@ -1,0 +1,755 @@
+Lab 6 run
+Python: 3.13.14 (tags/v3.13.14:fd17997, Jun 10 2026, 13:03:48) [MSC v.1944 64 bit (AMD64)]
+numpy: 2.5.1
+scikit-learn: 1.9.1
+sentence-transformers: 6.2.0
+MARKER_VERSIONS_START
+python=3.13.14
+numpy=2.5.1
+scikit-learn=1.9.1
+sentence-transformers=6.2.0
+MARKER_VERSIONS_END
+
+MARKER_TIMING_START
+Model load seconds: 2.031
+Model max_seq_length: 256
+MARKER_TIMING_END
+
+============================================================
+TASK 1: Tokenization Comparison
+============================================================
+MARKER_TOKEN_TABLE_START
+
+Input                  Whitespace                               Regex                                    Model subwords (2 EN)
+--------------------------------------------------------------------------------------------------------------------------------------------
+AI, search!            ['AI,', 'search!'] n=2                   ['AI', 'search'] n=2                     ['ai', ',', 'search', '!']
+I can't log in.        ['I', "can't", 'log', 'in.'] n=4         ['I', 'can', 't', 'log', 'in'] n=5       ['i', 'can', "'", 't', 'log', 'in', '.']
+help@example.com       ['help@example.com'] n=1                 ['help', 'example', 'com'] n=3           -
+CS4944 version 2.1     ['CS4944', 'version', '2.1'] n=3         ['CS4944', 'version', '2', '1'] n=4      -
+(empty)                [] n=0                                   [] n=0                                   -
+file_v2.1-final        ['file_v2.1-final'] n=1                  ['file_v2', '1', 'final'] n=3            -
+MARKER_TOKEN_TABLE_END
+
+Notes:
+- Whitespace keeps punctuation attached (e.g. 'AI,' and 'search!').
+- Regex \b\w+\b drops punctuation but splits emails and contractions like can't.
+- Empty string gives zero tokens for both methods.
+- Model subwords are different again; do not treat the regex as a full tokenizer.
+
+============================================================
+TASK 1: FAQ Chatbot (TF-IDF) demos
+============================================================
+MARKER_FAQ_START
+You: How do I reset my password?
+Bot: Use the recovery link on the login page. [source: it_help.txt]
+
+You: password recovery
+Bot: Possible matches; choose or rephrase your question:
+How do I reset my password? (similarity 0.407)
+How do I connect to campus Wi-Fi? (similarity 0.124)
+Where do I submit my assignment? (similarity 0.000)
+
+You: ''
+Bot: Please enter a question.
+
+You: volcano geology
+Bot: No matching FAQ. Please contact the help desk.
+
+You: What is the monthly student print quota?
+Bot: Students get 150 black and white pages each month. [source: printer_policy.txt]
+
+You: How do I connect to campus Wi-Fi?
+Bot: Join Eduroam and sign in with your university email and password. [source: network_guide.txt]
+
+MARKER_FAQ_END
+Exact questions return the stored answer plus source.
+Other questions only show suggestions so we confirm before treating them as answers.
+
+============================================================
+TASK 2: Chunking tests
+============================================================
+MARKER_CHUNK_TESTS_START
+PASS: windows('') -> []
+PASS: short document -> one window [(0, 10)]
+PASS: overlap >= size raises ValueError
+PASS: negative overlap raises ValueError
+PASS: long sentence fallback, spans= 3 max_words= 40
+PASS: make_chunks text == source[start:end]
+MARKER_CHUNK_TESTS_END
+
+============================================================
+TASK 2: Chunk stats per strategy
+============================================================
+MARKER_CHUNK_STATS_START
+doc late words= 218
+doc password words= 196
+doc assignment words= 226
+doc contractor words= 183
+doc printer words= 215
+
+Strategy: 0overlap
+  chunk_count: 28
+  min_words: 15 max_words: 40 avg_words: 37.07
+  duplicated_words (chunk_total - original): 0
+  rule+exception intact in one chunk?
+    late_penalty_with_extension -> False
+    password_rules -> False
+    contractor_remote -> True
+
+Strategy: 10overlap
+  chunk_count: 35
+  min_words: 16 max_words: 40 avg_words: 38.23
+  duplicated_words (chunk_total - original): 300
+  rule+exception intact in one chunk?
+    late_penalty_with_extension -> False
+    password_rules -> True
+    contractor_remote -> True
+
+Strategy: sentence
+  chunk_count: 34
+  min_words: 7 max_words: 40 avg_words: 30.53
+  duplicated_words (chunk_total - original): 0
+  rule+exception intact in one chunk?
+    late_penalty_with_extension -> True
+    password_rules -> True
+    contractor_remote -> True
+MARKER_CHUNK_STATS_END
+
+Sentence splitter note: abbreviations like Mr. or e.g. can still break on the period.
+
+============================================================
+TASK 2: Paraphrase retrieval (sentence chunks)
+============================================================
+MARKER_PARAPHRASE_START
+
+Backend: tfidf
+Query: How can I regain access to my account?
+  contractor:0 score=0.254 doc=contractor offsets=(0-263)
+   evidence: Contractor access policy covers external vendors working on university systems and buildings. Contractors receive temporary accounts limited to the systems list...
+  contractor:5 score=0.150 doc=contractor offsets=(1084-1255)
+   evidence: The policy does not apply to full-time employees or enrolled students seeking temporary lab accounts, who must use the student account process instead of contra...
+  password:4 score=0.121 doc=password offsets=(751-998)
+   evidence: Shared passwords between classmates violate the acceptable use policy and may lead to account suspension. Contact helpdesk@university.edu if the portal reports ...
+Query: I was sick; can I hand work in tomorrow?
+  late:1 score=0.236 doc=late offsets=(93-275)
+   evidence: Late work receives a 10 percent penalty for each calendar day late, up to three days, and is refused after that unless a formal extension was approved in writin...
+  contractor:4 score=0.228 doc=contractor offsets=(895-1083)
+   evidence: Contractors can work remotely only if the signed contract explicitly permits remote work, and employee remote work rules do not apply to contractors even when b...
+  assignment:1 score=0.181 doc=assignment offsets=(224-484)
+   evidence: Filenames should follow the pattern ModuleCode_StudentID_Assignment so markers can match files to students without opening every archive by hand during busy mar...
+Query: My printer has power but the pages come out blank.
+  printer:5 score=0.292 doc=printer offsets=(1081-1270)
+   evidence: A related but conflicting notice in some lab doors still says the monthly student quota is 200 pages, but the IT services printer document here is the current s...
+  printer:4 score=0.234 doc=printer offsets=(868-1080)
+   evidence: Misuse of printers for commercial work is prohibited under campus rules. For blank printer pages, check ink levels and run the cleaning utility, then print a te...
+  printer:0 score=0.166 doc=printer offsets=(0-218)
+   evidence: Campus printer and print quota rules are managed by IT services for students and visitors. Each student receives a monthly quota of 150 pages in black and white...
+
+Backend: embedding
+Query: How can I regain access to my account?
+  password:0 score=0.489 doc=password offsets=(0-253)
+   evidence: Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login page and select Forgot Password, then en...
+  password:4 score=0.468 doc=password offsets=(751-998)
+   evidence: Shared passwords between classmates violate the acceptable use policy and may lead to account suspension. Contact helpdesk@university.edu if the portal reports ...
+  password:3 score=0.442 doc=password offsets=(531-750)
+   evidence: If you do not receive the email, check the spam folder first. Staff at the IT help desk can reset passwords in person after photo ID verification. Multi-factor ...
+Query: I was sick; can I hand work in tomorrow?
+  late:1 score=0.226 doc=late offsets=(93-275)
+   evidence: Late work receives a 10 percent penalty for each calendar day late, up to three days, and is refused after that unless a formal extension was approved in writin...
+  late:6 score=0.225 doc=late offsets=(1132-1317)
+   evidence: Please note a conflicting portal notice elsewhere may mention a five day window, but this late policy document is the assessment office source for day based pen...
+  assignment:2 score=0.216 doc=assignment offsets=(485-545)
+   evidence: window and support tickets already fill the help desk queue.
+Query: My printer has power but the pages come out blank.
+  printer:4 score=0.506 doc=printer offsets=(868-1080)
+   evidence: Misuse of printers for commercial work is prohibited under campus rules. For blank printer pages, check ink levels and run the cleaning utility, then print a te...
+  printer:1 score=0.439 doc=printer offsets=(219-449)
+   evidence: Quotas reset on the first day of each month and unused pages do not roll over. Additional pages can be purchased through the student portal in packs of fifty. P...
+  printer:2 score=0.412 doc=printer offsets=(450-655)
+   evidence: Jobs older than twenty-four hours in the print queue are deleted automatically. Paper jams should be reported using the help button on the printer panel. Do not...
+MARKER_PARAPHRASE_END
+
+============================================================
+TASK 3: Retrieval evaluation (dev/test, 6 configs)
+============================================================
+MARKER_METRICS_START
+Strategy     Backend    Split    Hit@3   MRR@3  Chunks Encode(s) Search(s)
+--------------------------------------------------------------------------------
+Token audit for strategy 0overlap
+  Token audit (0overlap): max_tokens=58 limit=256 fits=True
+0overlap     tfidf      dev      0.750   0.750      28     0.004     0.000
+0overlap     tfidf      test     0.250   0.250      28     0.004     0.000
+
+Top-3 details: 0overlap tfidf
+Query: What is the late penalty and when is late work refused? | split= dev | answerable= True
+  rank 1 id=late:0 score=0.3997 doc=late offsets=(0-246)
+   text: University late submission policy applies to all undergraduate coursework in taught modules. Late work receives a 10 percent penalty for eac...
+  rank 2 id=contractor:3 score=0.2189 doc=contractor offsets=(855-1099)
+   text: and trigger a security incident review. Contractors can work remotely only if the signed contract explicitly permits remote work, and employ...
+  rank 3 id=printer:3 score=0.1783 doc=printer offsets=(708-950)
+   text: Large posters must use the dedicated plotter in the media lab and require staff booking. Guest printing is available with a prepaid card fro...
+Query: How do I reset my university password? | split= dev | answerable= True
+  rank 1 id=password:0 score=0.3078 doc=password offsets=(0-253)
+   text: Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login page and select Forg...
+  rank 2 id=password:3 score=0.2667 doc=password offsets=(711-998)
+   text: be re-enrolled after a password change. Shared passwords between classmates violate the acceptable use policy and may lead to account suspen...
+  rank 3 id=password:2 score=0.1296 doc=password offsets=(476-710)
+   text: reusing any of the last five passwords is not allowed. If you do not receive the email, check the spam folder first. Staff at the IT help de...
+Query: What file formats are accepted for assignment upload? | split= dev | answerable= True
+  rank 1 id=assignment:0 score=0.3758 doc=assignment offsets=(0-306)
+   text: Assignment submission guidelines require all coursework to be uploaded through the virtual learning environment before the stated deadline. ...
+  rank 2 id=assignment:2 score=0.2174 doc=assignment offsets=(539-794)
+   text: queue. The plagiarism checker runs automatically on every upload. Similarity scores above 25 percent are flagged for manual review by the mo...
+  rank 3 id=assignment:4 score=0.1865 doc=assignment offsets=(1061-1296)
+   text: need one designated member to submit on behalf of the team. Confirmation emails are sent after a successful upload. Important conflict note:...
+Query: Can contractors work remotely? | split= dev | answerable= True
+  rank 1 id=contractor:3 score=0.4682 doc=contractor offsets=(855-1099)
+   text: and trigger a security incident review. Contractors can work remotely only if the signed contract explicitly permits remote work, and employ...
+  rank 2 id=contractor:0 score=0.2021 doc=contractor offsets=(0-280)
+   text: Contractor access policy covers external vendors working on university systems and buildings. Contractors receive temporary accounts limited...
+  rank 3 id=contractor:2 score=0.1253 doc=contractor offsets=(580-854)
+   text: are monitored for unusual activity. Lost badges must be reported within twenty-four hours. Permanent staff accounts must never be shared wit...
+Query: What proof is needed when I was ill and need more time? | split= test | answerable= True
+  rank 1 id=late:0 score=0.1418 doc=late offsets=(0-246)
+   text: University late submission policy applies to all undergraduate coursework in taught modules. Late work receives a 10 percent penalty for eac...
+  rank 2 id=contractor:4 score=0.1243 doc=contractor offsets=(1100-1255)
+   text: not apply to full-time employees or enrolled students seeking temporary lab accounts, who must use the student account process instead of co...
+  rank 3 id=contractor:0 score=0.1139 doc=contractor offsets=(0-280)
+   text: Contractor access policy covers external vendors working on university systems and buildings. Contractors receive temporary accounts limited...
+Query: What are the rules for a new password? | split= test | answerable= True
+  rank 1 id=password:0 score=0.2454 doc=password offsets=(0-253)
+   text: Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login page and select Forg...
+  rank 2 id=contractor:2 score=0.1464 doc=contractor offsets=(580-854)
+   text: are monitored for unusual activity. Lost badges must be reported within twenty-four hours. Permanent staff accounts must never be shared wit...
+  rank 3 id=printer:3 score=0.1310 doc=printer offsets=(708-950)
+   text: Large posters must use the dedicated plotter in the media lab and require staff booking. Guest printing is available with a prepaid card fro...
+Query: How many pages is the monthly student print quota? | split= test | answerable= True
+  rank 1 id=printer:0 score=0.5146 doc=printer offsets=(0-231)
+   text: Campus printer and print quota rules are managed by IT services for students and visitors. Each student receives a monthly quota of 150 page...
+  rank 2 id=printer:4 score=0.4234 doc=printer offsets=(951-1186)
+   text: printer pages, check ink levels and run the cleaning utility, then print a test page afterwards before opening a hardware ticket. A related ...
+  rank 3 id=printer:1 score=0.2381 doc=printer offsets=(232-460)
+   text: on the first day of each month and unused pages do not roll over. Additional pages can be purchased through the student portal in packs of f...
+Query: What should I do for blank printer pages? | split= test | answerable= True
+  rank 1 id=printer:2 score=0.2044 doc=printer offsets=(461-707)
+   text: than twenty-four hours in the print queue are deleted automatically. Paper jams should be reported using the help button on the printer pane...
+  rank 2 id=printer:0 score=0.1967 doc=printer offsets=(0-231)
+   text: Campus printer and print quota rules are managed by IT services for students and visitors. Each student receives a monthly quota of 150 page...
+  rank 3 id=printer:1 score=0.1888 doc=printer offsets=(232-460)
+   text: on the first day of each month and unused pages do not roll over. Additional pages can be purchased through the student portal in packs of f...
+Query: What are tomorrow's flight prices? | split= test | answerable= False
+  rank 1 id=assignment:4 score=0.2030 doc=assignment offsets=(1061-1296)
+   text: need one designated member to submit on behalf of the team. Confirmation emails are sent after a successful upload. Important conflict note:...
+  rank 2 id=assignment:3 score=0.1014 doc=assignment offsets=(795-1060)
+   text: the deadline is graded. Technical problems during upload should be reported immediately with screenshots to the help desk so a late penalty ...
+  rank 3 id=assignment:0 score=0.0967 doc=assignment offsets=(0-306)
+   text: Assignment submission guidelines require all coursework to be uploaded through the virtual learning environment before the stated deadline. ...
+Query: Who won the football match? | split= test | answerable= False
+  rank 1 id=assignment:1 score=0.1718 doc=assignment offsets=(307-538)
+   text: match files to students without opening every archive by hand during busy marking weeks at the end of term when dozens of late uploads and r...
+  rank 2 id=contractor:4 score=0.1617 doc=contractor offsets=(1100-1255)
+   text: not apply to full-time employees or enrolled students seeking temporary lab accounts, who must use the student account process instead of co...
+  rank 3 id=late:2 score=0.1579 doc=late offsets=(519-786)
+   text: grading system and appear on the feedback sheet. Group projects follow the same rules unless the brief states otherwise. Students who miss t...
+
+0overlap     embedding  dev      0.750   0.750      28     0.167     0.000
+0overlap     embedding  test     0.500   0.500      28     0.167     0.000
+
+Top-3 details: 0overlap embedding
+Query: What is the late penalty and when is late work refused? | split= dev | answerable= True
+  rank 1 id=late:0 score=0.7237 doc=late offsets=(0-246)
+   text: University late submission policy applies to all undergraduate coursework in taught modules. Late work receives a 10 percent penalty for eac...
+  rank 2 id=late:3 score=0.5854 doc=late offsets=(787-1043)
+   text: five working days of the grade release. Teaching assistants cannot waive late penalties without approval from the module leader. Keep copies...
+  rank 3 id=late:4 score=0.5082 doc=late offsets=(1044-1288)
+   text: coursework uses the same late rules unless the exam board publishes a different notice. Please note a conflicting portal notice elsewhere ma...
+Query: How do I reset my university password? | split= dev | answerable= True
+  rank 1 id=password:0 score=0.8174 doc=password offsets=(0-253)
+   text: Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login page and select Forg...
+  rank 2 id=password:3 score=0.6254 doc=password offsets=(711-998)
+   text: be re-enrolled after a password change. Shared passwords between classmates violate the acceptable use policy and may lead to account suspen...
+  rank 3 id=password:2 score=0.4745 doc=password offsets=(476-710)
+   text: reusing any of the last five passwords is not allowed. If you do not receive the email, check the spam folder first. Staff at the IT help de...
+Query: What file formats are accepted for assignment upload? | split= dev | answerable= True
+  rank 1 id=assignment:0 score=0.6529 doc=assignment offsets=(0-306)
+   text: Assignment submission guidelines require all coursework to be uploaded through the virtual learning environment before the stated deadline. ...
+  rank 2 id=assignment:3 score=0.4336 doc=assignment offsets=(795-1060)
+   text: the deadline is graded. Technical problems during upload should be reported immediately with screenshots to the help desk so a late penalty ...
+  rank 3 id=assignment:2 score=0.3328 doc=assignment offsets=(539-794)
+   text: queue. The plagiarism checker runs automatically on every upload. Similarity scores above 25 percent are flagged for manual review by the mo...
+Query: Can contractors work remotely? | split= dev | answerable= True
+  rank 1 id=contractor:3 score=0.7146 doc=contractor offsets=(855-1099)
+   text: and trigger a security incident review. Contractors can work remotely only if the signed contract explicitly permits remote work, and employ...
+  rank 2 id=contractor:0 score=0.4707 doc=contractor offsets=(0-280)
+   text: Contractor access policy covers external vendors working on university systems and buildings. Contractors receive temporary accounts limited...
+  rank 3 id=contractor:1 score=0.3987 doc=contractor offsets=(281-579)
+   text: complete security awareness training before credentials are issued. They cannot sponsor guest Wi-Fi for others and must not store university...
+Query: What proof is needed when I was ill and need more time? | split= test | answerable= True
+  rank 1 id=late:1 score=0.3475 doc=late offsets=(247-518)
+   text: writing before the deadline. Extensions may be granted for documented medical issues, family emergencies, or verified system outages, but st...
+  rank 2 id=contractor:2 score=0.2498 doc=contractor offsets=(580-854)
+   text: are monitored for unusual activity. Lost badges must be reported within twenty-four hours. Permanent staff accounts must never be shared wit...
+  rank 3 id=late:3 score=0.2040 doc=late offsets=(787-1043)
+   text: five working days of the grade release. Teaching assistants cannot waive late penalties without approval from the module leader. Keep copies...
+Query: What are the rules for a new password? | split= test | answerable= True
+  rank 1 id=password:2 score=0.5223 doc=password offsets=(476-710)
+   text: reusing any of the last five passwords is not allowed. If you do not receive the email, check the spam folder first. Staff at the IT help de...
+  rank 2 id=password:1 score=0.5105 doc=password offsets=(254-475)
+   text: A reset link is sent to your registered personal email within ten minutes and the link expires after one hour. New passwords must be at leas...
+  rank 3 id=password:0 score=0.4592 doc=password offsets=(0-253)
+   text: Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login page and select Forg...
+Query: How many pages is the monthly student print quota? | split= test | answerable= True
+  rank 1 id=printer:0 score=0.7877 doc=printer offsets=(0-231)
+   text: Campus printer and print quota rules are managed by IT services for students and visitors. Each student receives a monthly quota of 150 page...
+  rank 2 id=printer:4 score=0.7029 doc=printer offsets=(951-1186)
+   text: printer pages, check ink levels and run the cleaning utility, then print a test page afterwards before opening a hardware ticket. A related ...
+  rank 3 id=printer:5 score=0.6111 doc=printer offsets=(1187-1270)
+   text: the IT services printer document here is the current source for the 150 page limit.
+Query: What should I do for blank printer pages? | split= test | answerable= True
+  rank 1 id=printer:1 score=0.5673 doc=printer offsets=(232-460)
+   text: on the first day of each month and unused pages do not roll over. Additional pages can be purchased through the student portal in packs of f...
+  rank 2 id=printer:4 score=0.5640 doc=printer offsets=(951-1186)
+   text: printer pages, check ink levels and run the cleaning utility, then print a test page afterwards before opening a hardware ticket. A related ...
+  rank 3 id=printer:2 score=0.5125 doc=printer offsets=(461-707)
+   text: than twenty-four hours in the print queue are deleted automatically. Paper jams should be reported using the help button on the printer pane...
+Query: What are tomorrow's flight prices? | split= test | answerable= False
+  rank 1 id=assignment:5 score=0.1375 doc=assignment offsets=(1297-1460)
+   text: five percent penalty applied once, which disagrees with the late policy day based ten percent rule, so always confirm with your module leade...
+  rank 2 id=late:5 score=0.0962 doc=late offsets=(1289-1409)
+   text: penalties on taught modules. Markers should never invent a local late rule that contradicts this assessment office text.
+  rank 3 id=printer:0 score=0.0949 doc=printer offsets=(0-231)
+   text: Campus printer and print quota rules are managed by IT services for students and visitors. Each student receives a monthly quota of 150 page...
+Query: Who won the football match? | split= test | answerable= False
+  rank 1 id=assignment:1 score=0.0816 doc=assignment offsets=(307-538)
+   text: match files to students without opening every archive by hand during busy marking weeks at the end of term when dozens of late uploads and r...
+  rank 2 id=password:0 score=0.0506 doc=password offsets=(0-253)
+   text: Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login page and select Forg...
+  rank 3 id=late:4 score=0.0380 doc=late offsets=(1044-1288)
+   text: coursework uses the same late rules unless the exam board publishes a different notice. Please note a conflicting portal notice elsewhere ma...
+
+Token audit for strategy 10overlap
+  Token audit (10overlap): max_tokens=58 limit=256 fits=True
+10overlap    tfidf      dev      0.750   0.750      35     0.004     0.000
+10overlap    tfidf      test     0.500   0.500      35     0.004     0.000
+
+Top-3 details: 10overlap tfidf
+Query: What is the late penalty and when is late work refused? | split= dev | answerable= True
+  rank 1 id=late:0 score=0.4045 doc=late offsets=(0-246)
+   text: University late submission policy applies to all undergraduate coursework in taught modules. Late work receives a 10 percent penalty for eac...
+  rank 2 id=contractor:4 score=0.1993 doc=contractor offsets=(855-1099)
+   text: and trigger a security incident review. Contractors can work remotely only if the signed contract explicitly permits remote work, and employ...
+  rank 3 id=assignment:4 score=0.1856 doc=assignment offsets=(795-1060)
+   text: the deadline is graded. Technical problems during upload should be reported immediately with screenshots to the help desk so a late penalty ...
+Query: How do I reset my university password? | split= dev | answerable= True
+  rank 1 id=password:0 score=0.2995 doc=password offsets=(0-253)
+   text: Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login page and select Forg...
+  rank 2 id=password:4 score=0.2622 doc=password offsets=(711-998)
+   text: be re-enrolled after a password change. Shared passwords between classmates violate the acceptable use policy and may lead to account suspen...
+  rank 3 id=password:3 score=0.2147 doc=password offsets=(531-786)
+   text: If you do not receive the email, check the spam folder first. Staff at the IT help desk can reset passwords in person after photo ID verific...
+Query: What file formats are accepted for assignment upload? | split= dev | answerable= True
+  rank 1 id=assignment:0 score=0.3828 doc=assignment offsets=(0-306)
+   text: Assignment submission guidelines require all coursework to be uploaded through the virtual learning environment before the stated deadline. ...
+  rank 2 id=assignment:3 score=0.2132 doc=assignment offsets=(616-861)
+   text: scores above 25 percent are flagged for manual review by the module leader. Students may upload a draft once for feedback before the final s...
+  rank 3 id=assignment:5 score=0.1564 doc=assignment offsets=(985-1246)
+   text: not accepted unless the brief specifically requests them. Group assignments need one designated member to submit on behalf of the team. Conf...
+Query: Can contractors work remotely? | split= dev | answerable= True
+  rank 1 id=contractor:4 score=0.4579 doc=contractor offsets=(855-1099)
+   text: and trigger a security incident review. Contractors can work remotely only if the signed contract explicitly permits remote work, and employ...
+  rank 2 id=contractor:3 score=0.4274 doc=contractor offsets=(645-924)
+   text: within twenty-four hours. Permanent staff accounts must never be shared with contractors. Requests for elevated privileges go through the ch...
+  rank 3 id=contractor:0 score=0.1960 doc=contractor offsets=(0-280)
+   text: Contractor access policy covers external vendors working on university systems and buildings. Contractors receive temporary accounts limited...
+Query: What proof is needed when I was ill and need more time? | split= test | answerable= True
+  rank 1 id=contractor:5 score=0.1687 doc=contractor offsets=(1049-1255)
+   text: when both groups use the same VPN. The policy does not apply to full-time employees or enrolled students seeking temporary lab accounts, who...
+  rank 2 id=late:0 score=0.1309 doc=late offsets=(0-246)
+   text: University late submission policy applies to all undergraduate coursework in taught modules. Late work receives a 10 percent penalty for eac...
+  rank 3 id=assignment:5 score=0.1038 doc=assignment offsets=(985-1246)
+   text: not accepted unless the brief specifically requests them. Group assignments need one designated member to submit on behalf of the team. Conf...
+Query: What are the rules for a new password? | split= test | answerable= True
+  rank 1 id=password:0 score=0.2417 doc=password offsets=(0-253)
+   text: Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login page and select Forg...
+  rank 2 id=late:2 score=0.1506 doc=late offsets=(394-648)
+   text: must email the module leader with a medical certificate before the due date. Late penalties are applied automatically by the grading system ...
+  rank 3 id=printer:4 score=0.1316 doc=printer offsets=(708-950)
+   text: Large posters must use the dedicated plotter in the media lab and require staff booking. Guest printing is available with a prepaid card fro...
+Query: How many pages is the monthly student print quota? | split= test | answerable= True
+  rank 1 id=printer:0 score=0.5085 doc=printer offsets=(0-231)
+   text: Campus printer and print quota rules are managed by IT services for students and visitors. Each student receives a monthly quota of 150 page...
+  rank 2 id=printer:6 score=0.3755 doc=printer offsets=(1073-1270)
+   text: ticket. A related but conflicting notice in some lab doors still says the monthly student quota is 200 pages, but the IT services printer do...
+  rank 3 id=printer:1 score=0.2628 doc=printer offsets=(175-398)
+   text: cost three times as much against the quota. Quotas reset on the first day of each month and unused pages do not roll over. Additional pages ...
+Query: What should I do for blank printer pages? | split= test | answerable= True
+  rank 1 id=printer:5 score=0.2706 doc=printer offsets=(887-1131)
+   text: for commercial work is prohibited under campus rules. For blank printer pages, check ink levels and run the cleaning utility, then print a t...
+  rank 2 id=printer:3 score=0.2177 doc=printer offsets=(530-765)
+   text: Paper jams should be reported using the help button on the printer panel. Do not attempt to open the printer casing yourself. Double-sided p...
+  rank 3 id=printer:0 score=0.2058 doc=printer offsets=(0-231)
+   text: Campus printer and print quota rules are managed by IT services for students and visitors. Each student receives a monthly quota of 150 page...
+Query: What are tomorrow's flight prices? | split= test | answerable= False
+  rank 1 id=assignment:5 score=0.2011 doc=assignment offsets=(985-1246)
+   text: not accepted unless the brief specifically requests them. Group assignments need one designated member to submit on behalf of the team. Conf...
+  rank 2 id=printer:2 score=0.1953 doc=printer offsets=(340-584)
+   text: the student portal in packs of fifty. Printers are located in the library, lab buildings, and student centre. Jobs older than twenty-four ho...
+  rank 3 id=late:2 score=0.1059 doc=late offsets=(394-648)
+   text: must email the module leader with a medical certificate before the due date. Late penalties are applied automatically by the grading system ...
+Query: Who won the football match? | split= test | answerable= False
+  rank 1 id=assignment:1 score=0.1792 doc=assignment offsets=(214-478)
+   text: projects. Filenames should follow the pattern ModuleCode_StudentID_Assignment so markers can match files to students without opening every a...
+  rank 2 id=late:3 score=0.1640 doc=late offsets=(583-853)
+   text: follow the same rules unless the brief states otherwise. Students who miss the absolute cutoff should contact student services to discuss de...
+  rank 3 id=contractor:5 score=0.1632 doc=contractor offsets=(1049-1255)
+   text: when both groups use the same VPN. The policy does not apply to full-time employees or enrolled students seeking temporary lab accounts, who...
+
+10overlap    embedding  dev      0.750   0.750      35     0.215     0.000
+10overlap    embedding  test     0.750   0.625      35     0.215     0.000
+
+Top-3 details: 10overlap embedding
+Query: What is the late penalty and when is late work refused? | split= dev | answerable= True
+  rank 1 id=late:0 score=0.7237 doc=late offsets=(0-246)
+   text: University late submission policy applies to all undergraduate coursework in taught modules. Late work receives a 10 percent penalty for eac...
+  rank 2 id=late:4 score=0.5854 doc=late offsets=(787-1043)
+   text: five working days of the grade release. Teaching assistants cannot waive late penalties without approval from the module leader. Keep copies...
+  rank 3 id=late:6 score=0.5418 doc=late offsets=(1172-1409)
+   text: elsewhere may mention a five day window, but this late policy document is the assessment office source for day based penalties on taught mod...
+Query: How do I reset my university password? | split= dev | answerable= True
+  rank 1 id=password:0 score=0.8174 doc=password offsets=(0-253)
+   text: Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login page and select Forg...
+  rank 2 id=password:1 score=0.6368 doc=password offsets=(199-425)
+   text: identity check with your student ID and date of birth. A reset link is sent to your registered personal email within ten minutes and the lin...
+  rank 3 id=password:4 score=0.6254 doc=password offsets=(711-998)
+   text: be re-enrolled after a password change. Shared passwords between classmates violate the acceptable use policy and may lead to account suspen...
+Query: What file formats are accepted for assignment upload? | split= dev | answerable= True
+  rank 1 id=assignment:0 score=0.6529 doc=assignment offsets=(0-306)
+   text: Assignment submission guidelines require all coursework to be uploaded through the virtual learning environment before the stated deadline. ...
+  rank 2 id=assignment:4 score=0.4336 doc=assignment offsets=(795-1060)
+   text: the deadline is graded. Technical problems during upload should be reported immediately with screenshots to the help desk so a late penalty ...
+  rank 3 id=assignment:5 score=0.4246 doc=assignment offsets=(985-1246)
+   text: not accepted unless the brief specifically requests them. Group assignments need one designated member to submit on behalf of the team. Conf...
+Query: Can contractors work remotely? | split= dev | answerable= True
+  rank 1 id=contractor:4 score=0.7146 doc=contractor offsets=(855-1099)
+   text: and trigger a security incident review. Contractors can work remotely only if the signed contract explicitly permits remote work, and employ...
+  rank 2 id=contractor:3 score=0.5568 doc=contractor offsets=(645-924)
+   text: within twenty-four hours. Permanent staff accounts must never be shared with contractors. Requests for elevated privileges go through the ch...
+  rank 3 id=contractor:0 score=0.4707 doc=contractor offsets=(0-280)
+   text: Contractor access policy covers external vendors working on university systems and buildings. Contractors receive temporary accounts limited...
+Query: What proof is needed when I was ill and need more time? | split= test | answerable= True
+  rank 1 id=late:1 score=0.2894 doc=late offsets=(186-456)
+   text: refused after that unless a formal extension was approved in writing before the deadline. Extensions may be granted for documented medical i...
+  rank 2 id=late:6 score=0.2288 doc=late offsets=(1172-1409)
+   text: elsewhere may mention a five day window, but this late policy document is the assessment office source for day based penalties on taught mod...
+  rank 3 id=late:2 score=0.2247 doc=late offsets=(394-648)
+   text: must email the module leader with a medical certificate before the due date. Late penalties are applied automatically by the grading system ...
+Query: What are the rules for a new password? | split= test | answerable= True
+  rank 1 id=password:2 score=0.6903 doc=password offsets=(365-578)
+   text: New passwords must be at least twelve characters and include upper case, lower case, a digit and a symbol, and reusing any of the last five ...
+  rank 2 id=password:1 score=0.4701 doc=password offsets=(199-425)
+   text: identity check with your student ID and date of birth. A reset link is sent to your registered personal email within ten minutes and the lin...
+  rank 3 id=password:0 score=0.4592 doc=password offsets=(0-253)
+   text: Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login page and select Forg...
+Query: How many pages is the monthly student print quota? | split= test | answerable= True
+  rank 1 id=printer:6 score=0.8092 doc=printer offsets=(1073-1270)
+   text: ticket. A related but conflicting notice in some lab doors still says the monthly student quota is 200 pages, but the IT services printer do...
+  rank 2 id=printer:0 score=0.7877 doc=printer offsets=(0-231)
+   text: Campus printer and print quota rules are managed by IT services for students and visitors. Each student receives a monthly quota of 150 page...
+  rank 3 id=printer:1 score=0.7830 doc=printer offsets=(175-398)
+   text: cost three times as much against the quota. Quotas reset on the first day of each month and unused pages do not roll over. Additional pages ...
+Query: What should I do for blank printer pages? | split= test | answerable= True
+  rank 1 id=printer:5 score=0.6526 doc=printer offsets=(887-1131)
+   text: for commercial work is prohibited under campus rules. For blank printer pages, check ink levels and run the cleaning utility, then print a t...
+  rank 2 id=printer:3 score=0.5058 doc=printer offsets=(530-765)
+   text: Paper jams should be reported using the help button on the printer panel. Do not attempt to open the printer casing yourself. Double-sided p...
+  rank 3 id=printer:2 score=0.4802 doc=printer offsets=(340-584)
+   text: the student portal in packs of fifty. Printers are located in the library, lab buildings, and student centre. Jobs older than twenty-four ho...
+Query: What are tomorrow's flight prices? | split= test | answerable= False
+  rank 1 id=printer:1 score=0.1546 doc=printer offsets=(175-398)
+   text: cost three times as much against the quota. Quotas reset on the first day of each month and unused pages do not roll over. Additional pages ...
+  rank 2 id=assignment:7 score=0.1454 doc=assignment offsets=(1362-1460)
+   text: policy day based ten percent rule, so always confirm with your module leader which source applies.
+  rank 3 id=late:6 score=0.1102 doc=late offsets=(1172-1409)
+   text: elsewhere may mention a five day window, but this late policy document is the assessment office source for day based penalties on taught mod...
+Query: Who won the football match? | split= test | answerable= False
+  rank 1 id=password:0 score=0.0506 doc=password offsets=(0-253)
+   text: Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login page and select Forg...
+  rank 2 id=late:5 score=0.0475 doc=late offsets=(986-1226)
+   text: still count as calendar days for the penalty clock. Resit coursework uses the same late rules unless the exam board publishes a different no...
+  rank 3 id=password:1 score=0.0418 doc=password offsets=(199-425)
+   text: identity check with your student ID and date of birth. A reset link is sent to your registered personal email within ten minutes and the lin...
+
+Token audit for strategy sentence
+  Token audit (sentence): max_tokens=55 limit=256 fits=True
+sentence     tfidf      dev      1.000   1.000      34     0.004     0.000
+sentence     tfidf      test     0.500   0.500      34     0.004     0.000
+
+Top-3 details: sentence tfidf
+Query: What is the late penalty and when is late work refused? | split= dev | answerable= True
+  rank 1 id=late:1 score=0.4144 doc=late offsets=(93-275)
+   text: Late work receives a 10 percent penalty for each calendar day late, up to three days, and is refused after that unless a formal extension wa...
+  rank 2 id=contractor:4 score=0.2179 doc=contractor offsets=(895-1083)
+   text: Contractors can work remotely only if the signed contract explicitly permits remote work, and employee remote work rules do not apply to con...
+  rank 3 id=assignment:4 score=0.1984 doc=assignment offsets=(767-960)
+   text: Only the last upload before the deadline is graded. Technical problems during upload should be reported immediately with screenshots to the ...
+Query: How do I reset my university password? | split= dev | answerable= True
+  rank 1 id=password:0 score=0.3089 doc=password offsets=(0-253)
+   text: Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login page and select Forg...
+  rank 2 id=password:3 score=0.2424 doc=password offsets=(531-750)
+   text: If you do not receive the email, check the spam folder first. Staff at the IT help desk can reset passwords in person after photo ID verific...
+  rank 3 id=password:4 score=0.1900 doc=password offsets=(751-998)
+   text: Shared passwords between classmates violate the acceptable use policy and may lead to account suspension. Contact helpdesk@university.edu if...
+Query: What file formats are accepted for assignment upload? | split= dev | answerable= True
+  rank 1 id=assignment:0 score=0.4325 doc=assignment offsets=(0-223)
+   text: Assignment submission guidelines require all coursework to be uploaded through the virtual learning environment before the stated deadline. ...
+  rank 2 id=assignment:3 score=0.1957 doc=assignment offsets=(546-766)
+   text: The plagiarism checker runs automatically on every upload. Similarity scores above 25 percent are flagged for manual review by the module le...
+  rank 3 id=assignment:5 score=0.1792 doc=assignment offsets=(961-1176)
+   text: Printed hard copies are not accepted unless the brief specifically requests them. Group assignments need one designated member to submit on ...
+Query: Can contractors work remotely? | split= dev | answerable= True
+  rank 1 id=contractor:4 score=0.5114 doc=contractor offsets=(895-1083)
+   text: Contractors can work remotely only if the signed contract explicitly permits remote work, and employee remote work rules do not apply to con...
+  rank 2 id=contractor:0 score=0.1305 doc=contractor offsets=(0-263)
+   text: Contractor access policy covers external vendors working on university systems and buildings. Contractors receive temporary accounts limited...
+  rank 3 id=contractor:3 score=0.0957 doc=contractor offsets=(806-894)
+   text: Breach of these rules can terminate the contract and trigger a security incident review.
+Query: What proof is needed when I was ill and need more time? | split= test | answerable= True
+  rank 1 id=late:1 score=0.1677 doc=late offsets=(93-275)
+   text: Late work receives a 10 percent penalty for each calendar day late, up to three days, and is refused after that unless a formal extension wa...
+  rank 2 id=contractor:0 score=0.1190 doc=contractor offsets=(0-263)
+   text: Contractor access policy covers external vendors working on university systems and buildings. Contractors receive temporary accounts limited...
+  rank 3 id=contractor:5 score=0.1166 doc=contractor offsets=(1084-1255)
+   text: The policy does not apply to full-time employees or enrolled students seeking temporary lab accounts, who must use the student account proce...
+Query: What are the rules for a new password? | split= test | answerable= True
+  rank 1 id=password:0 score=0.2471 doc=password offsets=(0-253)
+   text: Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login page and select Forg...
+  rank 2 id=late:3 score=0.1553 doc=late offsets=(471-639)
+   text: Late penalties are applied automatically by the grading system and appear on the feedback sheet. Group projects follow the same rules unless...
+  rank 3 id=late:5 score=0.1414 doc=late offsets=(916-1131)
+   text: Keep copies of all submission receipts for your records. Weekend days still count as calendar days for the penalty clock. Resit coursework u...
+Query: How many pages is the monthly student print quota? | split= test | answerable= True
+  rank 1 id=printer:0 score=0.5186 doc=printer offsets=(0-218)
+   text: Campus printer and print quota rules are managed by IT services for students and visitors. Each student receives a monthly quota of 150 page...
+  rank 2 id=printer:5 score=0.3850 doc=printer offsets=(1081-1270)
+   text: A related but conflicting notice in some lab doors still says the monthly student quota is 200 pages, but the IT services printer document h...
+  rank 3 id=printer:1 score=0.2276 doc=printer offsets=(219-449)
+   text: Quotas reset on the first day of each month and unused pages do not roll over. Additional pages can be purchased through the student portal ...
+Query: What should I do for blank printer pages? | split= test | answerable= True
+  rank 1 id=printer:4 score=0.2923 doc=printer offsets=(868-1080)
+   text: Misuse of printers for commercial work is prohibited under campus rules. For blank printer pages, check ink levels and run the cleaning util...
+  rank 2 id=printer:2 score=0.2408 doc=printer offsets=(450-655)
+   text: Jobs older than twenty-four hours in the print queue are deleted automatically. Paper jams should be reported using the help button on the p...
+  rank 3 id=printer:0 score=0.1912 doc=printer offsets=(0-218)
+   text: Campus printer and print quota rules are managed by IT services for students and visitors. Each student receives a monthly quota of 150 page...
+Query: What are tomorrow's flight prices? | split= test | answerable= False
+  rank 1 id=assignment:5 score=0.2209 doc=assignment offsets=(961-1176)
+   text: Printed hard copies are not accepted unless the brief specifically requests them. Group assignments need one designated member to submit on ...
+  rank 2 id=late:3 score=0.1328 doc=late offsets=(471-639)
+   text: Late penalties are applied automatically by the grading system and appear on the feedback sheet. Group projects follow the same rules unless...
+  rank 3 id=assignment:0 score=0.1150 doc=assignment offsets=(0-223)
+   text: Assignment submission guidelines require all coursework to be uploaded through the virtual learning environment before the stated deadline. ...
+Query: Who won the football match? | split= test | answerable= False
+  rank 1 id=assignment:1 score=0.1693 doc=assignment offsets=(224-484)
+   text: Filenames should follow the pattern ModuleCode_StudentID_Assignment so markers can match files to students without opening every archive by ...
+  rank 2 id=contractor:5 score=0.1668 doc=contractor offsets=(1084-1255)
+   text: The policy does not apply to full-time employees or enrolled students seeking temporary lab accounts, who must use the student account proce...
+  rank 3 id=late:4 score=0.1447 doc=late offsets=(640-915)
+   text: Students who miss the absolute cutoff should contact student services to discuss deferred assessment options. Appeal requests must be filed ...
+
+sentence     embedding  dev      1.000   1.000      34     0.219     0.000
+sentence     embedding  test     1.000   0.875      34     0.219     0.000
+
+Top-3 details: sentence embedding
+Query: What is the late penalty and when is late work refused? | split= dev | answerable= True
+  rank 1 id=late:1 score=0.8444 doc=late offsets=(93-275)
+   text: Late work receives a 10 percent penalty for each calendar day late, up to three days, and is refused after that unless a formal extension wa...
+  rank 2 id=late:3 score=0.6447 doc=late offsets=(471-639)
+   text: Late penalties are applied automatically by the grading system and appear on the feedback sheet. Group projects follow the same rules unless...
+  rank 3 id=assignment:6 score=0.5312 doc=assignment offsets=(1177-1414)
+   text: Important conflict note: the portal help page states late uploads are accepted for up to five calendar days with a flat five percent penalty...
+Query: How do I reset my university password? | split= dev | answerable= True
+  rank 1 id=password:0 score=0.8174 doc=password offsets=(0-253)
+   text: Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login page and select Forg...
+  rank 2 id=password:4 score=0.5437 doc=password offsets=(751-998)
+   text: Shared passwords between classmates violate the acceptable use policy and may lead to account suspension. Contact helpdesk@university.edu if...
+  rank 3 id=password:3 score=0.4671 doc=password offsets=(531-750)
+   text: If you do not receive the email, check the spam folder first. Staff at the IT help desk can reset passwords in person after photo ID verific...
+Query: What file formats are accepted for assignment upload? | split= dev | answerable= True
+  rank 1 id=assignment:0 score=0.6525 doc=assignment offsets=(0-223)
+   text: Assignment submission guidelines require all coursework to be uploaded through the virtual learning environment before the stated deadline. ...
+  rank 2 id=assignment:1 score=0.4109 doc=assignment offsets=(224-484)
+   text: Filenames should follow the pattern ModuleCode_StudentID_Assignment so markers can match files to students without opening every archive by ...
+  rank 3 id=assignment:4 score=0.3812 doc=assignment offsets=(767-960)
+   text: Only the last upload before the deadline is graded. Technical problems during upload should be reported immediately with screenshots to the ...
+Query: Can contractors work remotely? | split= dev | answerable= True
+  rank 1 id=contractor:4 score=0.7333 doc=contractor offsets=(895-1083)
+   text: Contractors can work remotely only if the signed contract explicitly permits remote work, and employee remote work rules do not apply to con...
+  rank 2 id=contractor:0 score=0.4663 doc=contractor offsets=(0-263)
+   text: Contractor access policy covers external vendors working on university systems and buildings. Contractors receive temporary accounts limited...
+  rank 3 id=contractor:1 score=0.4494 doc=contractor offsets=(264-523)
+   text: Contractors must complete security awareness training before credentials are issued. They cannot sponsor guest Wi-Fi for others and must not...
+Query: What proof is needed when I was ill and need more time? | split= test | answerable= True
+  rank 1 id=late:2 score=0.3139 doc=late offsets=(276-470)
+   text: Extensions may be granted for documented medical issues, family emergencies, or verified system outages, but students must email the module ...
+  rank 2 id=late:5 score=0.2180 doc=late offsets=(916-1131)
+   text: Keep copies of all submission receipts for your records. Weekend days still count as calendar days for the penalty clock. Resit coursework u...
+  rank 3 id=late:6 score=0.2117 doc=late offsets=(1132-1317)
+   text: Please note a conflicting portal notice elsewhere may mention a five day window, but this late policy document is the assessment office sour...
+Query: What are the rules for a new password? | split= test | answerable= True
+  rank 1 id=password:2 score=0.7342 doc=password offsets=(365-530)
+   text: New passwords must be at least twelve characters and include upper case, lower case, a digit and a symbol, and reusing any of the last five ...
+  rank 2 id=password:0 score=0.4592 doc=password offsets=(0-253)
+   text: Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login page and select Forg...
+  rank 3 id=password:3 score=0.4013 doc=password offsets=(531-750)
+   text: If you do not receive the email, check the spam folder first. Staff at the IT help desk can reset passwords in person after photo ID verific...
+Query: How many pages is the monthly student print quota? | split= test | answerable= True
+  rank 1 id=printer:5 score=0.8466 doc=printer offsets=(1081-1270)
+   text: A related but conflicting notice in some lab doors still says the monthly student quota is 200 pages, but the IT services printer document h...
+  rank 2 id=printer:0 score=0.7911 doc=printer offsets=(0-218)
+   text: Campus printer and print quota rules are managed by IT services for students and visitors. Each student receives a monthly quota of 150 page...
+  rank 3 id=printer:1 score=0.7803 doc=printer offsets=(219-449)
+   text: Quotas reset on the first day of each month and unused pages do not roll over. Additional pages can be purchased through the student portal ...
+Query: What should I do for blank printer pages? | split= test | answerable= True
+  rank 1 id=printer:4 score=0.6539 doc=printer offsets=(868-1080)
+   text: Misuse of printers for commercial work is prohibited under campus rules. For blank printer pages, check ink levels and run the cleaning util...
+  rank 2 id=printer:2 score=0.5060 doc=printer offsets=(450-655)
+   text: Jobs older than twenty-four hours in the print queue are deleted automatically. Paper jams should be reported using the help button on the p...
+  rank 3 id=printer:1 score=0.4926 doc=printer offsets=(219-449)
+   text: Quotas reset on the first day of each month and unused pages do not roll over. Additional pages can be purchased through the student portal ...
+Query: What are tomorrow's flight prices? | split= test | answerable= False
+  rank 1 id=assignment:2 score=0.2004 doc=assignment offsets=(485-545)
+   text: window and support tickets already fill the help desk queue.
+  rank 2 id=late:6 score=0.1461 doc=late offsets=(1132-1317)
+   text: Please note a conflicting portal notice elsewhere may mention a five day window, but this late policy document is the assessment office sour...
+  rank 3 id=printer:0 score=0.0942 doc=printer offsets=(0-218)
+   text: Campus printer and print quota rules are managed by IT services for students and visitors. Each student receives a monthly quota of 150 page...
+Query: Who won the football match? | split= test | answerable= False
+  rank 1 id=contractor:3 score=0.0664 doc=contractor offsets=(806-894)
+   text: Breach of these rules can terminate the contract and trigger a security incident review.
+  rank 2 id=password:0 score=0.0506 doc=password offsets=(0-253)
+   text: Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login page and select Forg...
+  rank 3 id=assignment:2 score=0.0299 doc=assignment offsets=(485-545)
+   text: window and support tickets already fill the help desk queue.
+
+MARKER_METRICS_END
+
+MARKER_SELECTION_START
+Selected from DEV only: sentence + embedding Hit@3=1.000 MRR@3=1.000
+Held-out TEST for selected config: Hit@3=1.000 MRR@3=0.875
+MARKER_SELECTION_END
+
+MARKER_FAILURES_START
+Automatic failure list (answerable misses in top-3):
+FAIL 1
+  config: 0overlap tfidf
+  query: What is the late penalty and when is late work refused?
+  expected_doc: late
+  retrieved_rank: 1 id= late:0 doc= late
+  retrieved_text: University late submission policy applies to all undergraduate coursework in taught modules. Late work receives a 10 percent penalty for each calendar day late, up to three days, a...
+FAIL 2
+  config: 0overlap tfidf
+  query: What proof is needed when I was ill and need more time?
+  expected_doc: late
+  retrieved_rank: 1 id= late:0 doc= late
+  retrieved_text: University late submission policy applies to all undergraduate coursework in taught modules. Late work receives a 10 percent penalty for each calendar day late, up to three days, a...
+FAIL 3
+  config: 0overlap tfidf
+  query: What are the rules for a new password?
+  expected_doc: password
+  retrieved_rank: 1 id= password:0 doc= password
+  retrieved_text: Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login page and select Forgot Password, then enter your student ema...
+FAIL 4
+  config: 0overlap tfidf
+  query: What should I do for blank printer pages?
+  expected_doc: printer
+  retrieved_rank: 1 id= printer:2 doc= printer
+  retrieved_text: than twenty-four hours in the print queue are deleted automatically. Paper jams should be reported using the help button on the printer panel. Do not attempt to open the printer ca...
+FAIL 5
+  config: 0overlap embedding
+  query: What is the late penalty and when is late work refused?
+  expected_doc: late
+  retrieved_rank: 1 id= late:0 doc= late
+  retrieved_text: University late submission policy applies to all undergraduate coursework in taught modules. Late work receives a 10 percent penalty for each calendar day late, up to three days, a...
+FAIL 6
+  config: 0overlap embedding
+  query: What are the rules for a new password?
+  expected_doc: password
+  retrieved_rank: 1 id= password:2 doc= password
+  retrieved_text: reusing any of the last five passwords is not allowed. If you do not receive the email, check the spam folder first. Staff at the IT help desk can reset passwords in person after p...
+FAIL 7
+  config: 0overlap embedding
+  query: What should I do for blank printer pages?
+  expected_doc: printer
+  retrieved_rank: 1 id= printer:1 doc= printer
+  retrieved_text: on the first day of each month and unused pages do not roll over. Additional pages can be purchased through the student portal in packs of fifty. Printers are located in the librar...
+FAIL 8
+  config: 10overlap tfidf
+  query: What is the late penalty and when is late work refused?
+  expected_doc: late
+  retrieved_rank: 1 id= late:0 doc= late
+  retrieved_text: University late submission policy applies to all undergraduate coursework in taught modules. Late work receives a 10 percent penalty for each calendar day late, up to three days, a...
+MARKER_FAILURES_END
+Wrote retrieval_log.csv rows= 180
+
+============================================================
+TASK 3: Document chatbot demos (selected config)
+============================================================
+MARKER_DOC_CHAT_START
+DEMO: exact-ish
+Question: What is the late penalty and when is late work refused?
+Candidate evidence; relevance must be checked:
+1 late:1 0.844 characters 93 275
+    Late work receives a 10 percent penalty for each calendar day late, up to three days, and is refused after that unless a...
+2 late:3 0.645 characters 471 639
+    Late penalties are applied automatically by the grading system and appear on the feedback sheet. Group projects follow t...
+3 assignment:6 0.531 characters 1177 1414
+    Important conflict note: the portal help page states late uploads are accepted for up to five calendar days with a flat ...
+Retrieved passage: Late work receives a 10 percent penalty for each calendar day late, up to three days, and is refused after that unless a formal extension was approved in writing before the deadline.
+Source: late characters 93 275
+
+DEMO: paraphrase
+Question: How can I recover my login access?
+Candidate evidence; relevance must be checked:
+1 password:0 0.530 characters 0 253
+    Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login ...
+2 password:4 0.427 characters 751 998
+    Shared passwords between classmates violate the acceptable use policy and may lead to account suspension. Contact helpde...
+3 password:3 0.397 characters 531 750
+    If you do not receive the email, check the spam folder first. Staff at the IT help desk can reset passwords in person af...
+Retrieved passage: Password reset procedures for university accounts are handled through the IT self-service portal. Navigate to the login page and select Forgot Password, then enter your student email and complete an identity check with your student ID and date of birth.
+Source: password characters 0 253
+
+DEMO: empty
+Question: ''
+No candidate evidence; rephrase or contact a human.
+
+DEMO: unsupported
+Question: What are tomorrow's flight prices?
+Candidate evidence; relevance must be checked:
+1 assignment:2 0.200 characters 485 545
+    window and support tickets already fill the help desk queue.
+2 late:6 0.146 characters 1132 1317
+    Please note a conflicting portal notice elsewhere may mention a five day window, but this late policy document is the as...
+3 printer:0 0.094 characters 0 218
+    Campus printer and print quota rules are managed by IT services for students and visitors. Each student receives a month...
+No answer selected. Rephrase or contact a human.
+
+MARKER_DOC_CHAT_END
+
+Opening FAQ chatbot next (type exit when finished).
+============================================================
+FAQ Chatbot interactive (TF-IDF). Type exit to stop.
+============================================================
+You: 
+Exiting FAQ chatbot.
+Opening document chatbot next (type exit when finished).
+============================================================
+TASK 3 Chatbot: Document Q&A (sentence + embedding)
+============================================================
+Type a question about university policies.
+Type 'exit' to stop.
+Candidates are evidence to inspect, not verified answers.
+
+Question: 
+Exiting chatbot.
+Done. Full transcript saved to run_output.txt
